@@ -1,5 +1,4 @@
-﻿//#define DEBUG
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -20,24 +19,35 @@ public class MapGen : Singleton<MapGen>
     private Point[,,] Points;
 
     public bool visualizeHeightMap = false;
+    [Range(0,4)]
+    public int pointLayer = 0;
     public bool visualizePoints = false;
 
     private Bounds worldBounds;
     private Vector3Int chunkSnapVector;
     private Vector2 noiseOffset;
+    private float noiseScale = 16.0f;
+
+    //This is an offset for each poly to make some roughness on terrain surface
+    private static float terrainRoughness = 0.05f;
 
     void Start()
     {
-        noiseOffset = new Vector2(UnityEngine.Random.Range(0, 9999999), UnityEngine.Random.Range(0, 9999999));
+        noiseOffset = new Vector2(Random.Range(0, 99999), Random.Range(0, 99999));
         chunkSnapVector = new Vector3Int(chunkSize.x - 2, chunkSize.y - 2, chunkSize.z - 2);
 
         Points = new Point[mapSize.x, mapSize.y, mapSize.z];
         heightMap = new int[mapSize.x, mapSize.z];
 
-        //QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = 60;
 
         worldBounds = new Bounds(new Vector3(mapSize.x * 0.5f, mapSize.y * 0.5f, mapSize.z * 0.5f), mapSize);
+
+        //fill up height map and density map
+        float xCoord;
+        float zCoord;
+        float density;
+        Color color;
 
         for (int y = 0; y < mapSize.y; y++)
         {
@@ -47,15 +57,19 @@ public class MapGen : Singleton<MapGen>
                 {
                     if (y == 0)
                     {
-                        heightMap[x, z] = (int)GetNoiseAt(x, z, 1.0f, 1.0f, 4, 0.5f, 0.5f);
-                        //heightMap[x, z] = Random.Range(0, 4);
+                        xCoord = (float)x / (float)mapSize.x * noiseScale + noiseOffset.x;
+                        zCoord =(float)z / (float)mapSize.z * noiseScale + noiseOffset.y;
+                        heightMap[x, z] = Mathf.RoundToInt(Mathf.PerlinNoise(xCoord, zCoord) * (float)(mapSize.y - 2));
 
-                        Points[x, y, z] = new Point(new Vector3(x, y, z), 1.0f, Color.black);
+                        Points[x, y, z] = new Point(new Vector3(x, y, z), 
+                                                    Random.Range(1.0f - terrainRoughness, 1.0f), 
+                                                    Color.black);
                     }
                     else
                     {
-                        float density = (heightMap[x, z] >= y) ? 1.0f : 0.0f;
-                        Color color = Color.black;
+                        density = (heightMap[x, z] >= y) ? Random.Range(1.0f - terrainRoughness, 1.0f) : 0.0f;
+
+                        color = Color.black;
 
                         if (heightMap[x, z] > 1 && heightMap[x, z] < 2) color = Color.red;
                         if (heightMap[x, z] > 2 && heightMap[x, z] < 3) color = Color.green;
@@ -67,7 +81,7 @@ public class MapGen : Singleton<MapGen>
             }
         }
 
-        //chunk gen and activate
+        //chunk gen
         //for (int z = 0; z < mapSize.z; z += chunkSnapVector.z)
         for (int z = 0; z < mapSize.z; z += chunkSize.z)
         {
@@ -154,29 +168,6 @@ public class MapGen : Singleton<MapGen>
 
     public static Vector3 GetPointChunkCoord(int x, int y, int z) => new Vector3 { x = x % chunkSize.x, y = y % chunkSize.y, z = z % chunkSize.z };
 
-    private List<Vector3Int> GetNeighbourCoords(Vector3Int worldCoord)
-    {
-        List<Vector3Int> neighbours = new List<Vector3Int>(26);
-        Vector3Int actualCell = new Vector3Int();
-
-        for (int z = worldCoord.z - chunkSnapVector.z; z <= worldCoord.z + chunkSnapVector.z; z += chunkSnapVector.z)
-        {
-            for (int x = worldCoord.x - chunkSnapVector.x; x <= worldCoord.x + chunkSnapVector.x; x += chunkSnapVector.x)
-            {
-                actualCell.Set(x, 0, z);
-
-                if (actualCell == worldCoord) continue; //skip self
-
-                if (ChunkCells.ContainsKey(actualCell))
-                {
-                    neighbours.Add(actualCell);
-                }
-            }
-        }
-
-        return neighbours;
-    }
-
     private void OnDrawGizmos()
     {
         foreach (KeyValuePair<Vector3Int, Chunk> chunk in ChunkCells)
@@ -206,14 +197,11 @@ public class MapGen : Singleton<MapGen>
 
         if (visualizePoints)
         {
-            for (int y = 0; y < mapSize.y; y++)
+            for (int z = 0; z < mapSize.z; z++)
             {
-                for (int z = 0; z < mapSize.z; z++)
+                for (int x = 0; x < mapSize.x; x++)
                 {
-                    for (int x = 0; x < mapSize.x; x++)
-                    {
-                        GizmoExtension.GizmosExtend.DrawBox(new Vector3(x, y, z), Vector3.one * 0.5f, Quaternion.identity, new Color(Points[x, y, z].density, Points[x, y, z].density, Points[x, y, z].density, 1.0f));
-                    }
+                    GizmoExtension.GizmosExtend.DrawBox(new Vector3(x, pointLayer, z), Vector3.one * 0.5f, Quaternion.identity, new Color(Points[x, pointLayer, z].density, Points[x, pointLayer, z].density, Points[x, pointLayer, z].density, 1.0f));
                 }
             }
         }
