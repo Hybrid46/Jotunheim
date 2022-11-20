@@ -1,2 +1,2 @@
 # Jotunheim
-Unity Strategy Survival Game
+Unity Top-down Survival Game
