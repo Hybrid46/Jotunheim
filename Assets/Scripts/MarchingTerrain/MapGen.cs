@@ -1,12 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using Random = UnityEngine.Random;
 
 public class MapGen : Singleton<MapGen>
 {
-    public static Vector3Int mapSize = new Vector3Int(256, 5, 256);
+    public UnityAction OnChunksGenerated;
+
+    public void ChunksGenerated()
+    {
+        Debug.Log("Chunks ready!");
+    }
+
+    public static Vector3Int mapSize = new Vector3Int(253, 5, 253);
     public static Vector3Int chunkSize = new Vector3Int(16, 5, 16);
+    private Vector3Int chunkSnapVector;
+
     public Material TerrainMat;
 
     public Dictionary<Vector3Int, Chunk> ChunkCells = new Dictionary<Vector3Int, Chunk>();
@@ -19,21 +29,21 @@ public class MapGen : Singleton<MapGen>
     private Point[,,] Points;
 
     public bool visualizeHeightMap = false;
-    [Range(0,4)]
+    [Range(0, 4)]
     public int pointLayer = 0;
     public bool visualizePoints = false;
 
     private Bounds worldBounds;
-    private Vector3Int chunkSnapVector;
     private Vector2 noiseOffset;
     private float noiseScale = 16.0f;
 
     //This is an offset for each poly to make some roughness on terrain surface
-    private static float terrainRoughness = 0.05f;
+    private static float iceRoughness = 0.025f;
+    private static float terrainRoughness = 0.1f;
 
     void Start()
     {
-        noiseOffset = new Vector2(Random.Range(0, 99999), Random.Range(0, 99999));
+        noiseOffset = new Vector2(Random.Range(0, 999999), Random.Range(0, 999999));
         chunkSnapVector = new Vector3Int(chunkSize.x - 2, chunkSize.y - 2, chunkSize.z - 2);
 
         Points = new Point[mapSize.x, mapSize.y, mapSize.z];
@@ -43,7 +53,7 @@ public class MapGen : Singleton<MapGen>
 
         worldBounds = new Bounds(new Vector3(mapSize.x * 0.5f, mapSize.y * 0.5f, mapSize.z * 0.5f), mapSize);
 
-        //fill up height map and density map
+        //Fill up height and density map
         float xCoord;
         float zCoord;
         float density;
@@ -58,11 +68,11 @@ public class MapGen : Singleton<MapGen>
                     if (y == 0)
                     {
                         xCoord = (float)x / (float)mapSize.x * noiseScale + noiseOffset.x;
-                        zCoord =(float)z / (float)mapSize.z * noiseScale + noiseOffset.y;
+                        zCoord = (float)z / (float)mapSize.z * noiseScale + noiseOffset.y;
                         heightMap[x, z] = Mathf.RoundToInt(Mathf.PerlinNoise(xCoord, zCoord) * (float)(mapSize.y - 2));
 
-                        Points[x, y, z] = new Point(new Vector3(x, y, z), 
-                                                    Random.Range(1.0f - terrainRoughness, 1.0f), 
+                        Points[x, y, z] = new Point(new Vector3(x, y, z),
+                                                    Random.Range(1.0f - iceRoughness, 1.0f),
                                                     Color.black);
                     }
                     else
@@ -81,22 +91,25 @@ public class MapGen : Singleton<MapGen>
             }
         }
 
-        //chunk gen
+        //chunk generation
         //for (int z = 0; z < mapSize.z; z += chunkSnapVector.z)
-        for (int z = 0; z < mapSize.z; z += chunkSize.z)
+        for (int z = 0; z < mapSize.z; z += chunkSnapVector.z)
         {
             //for (int x = 0; x < mapSize.x; x += chunkSnapVector.x)
-            for (int x = 0; x < mapSize.x; x += chunkSize.x)
+            for (int x = 0; x < mapSize.x; x += chunkSnapVector.x)
             {
                 //Vector3Int pos = Vector3Int.RoundToInt(Snapping.Snap(new Vector3Int(x, 0, z), chunkSnapVector, SnapAxis.All));
-                Vector3Int pos = new Vector3Int(x - x / chunkSize.x, 0, z - z / chunkSize.z);
+                Vector3Int worldPosition = new Vector3Int(x - x / chunkSize.x, 0, z - z / chunkSize.z);
 
-                ChunkCells.Add(pos, CreateChunk(pos));
+                ChunkCells.Add(worldPosition, CreateChunk(worldPosition));
             }
         }
+
+        OnChunksGenerated += ChunksGenerated;
+        OnChunksGenerated.Invoke();
     }
 
-    public Chunk CreateChunk(Vector3Int worldPos)
+    public Chunk CreateChunk(Vector3Int worldPosition)
     {
         DateTime exectime = DateTime.Now;
 
@@ -106,26 +119,24 @@ public class MapGen : Singleton<MapGen>
         MeshCollider meshCollider = chunkObj.AddComponent<MeshCollider>();
 
         chunkObj.transform.parent = transform;
-        chunkObj.transform.position = worldPos;
+        chunkObj.transform.position = worldPosition;
         chunkObj.transform.localPosition = Vector3.zero;
 
-        chunkObj.name = "Chunk " + worldPos;
+        chunkObj.name = "Chunk " + worldPosition;
 
         Chunk currentChunk = chunkObj.AddComponent<Chunk>();
-        currentChunk.chunkWorldPos = worldPos;
+        currentChunk.chunkWorldPos = worldPosition;
 
-        for (int z = worldPos.z; z < worldPos.z + chunkSize.z; z++)
+        //Fill Chunk Points
+        for (int z = worldPosition.z; z < worldPosition.z + chunkSize.z; z++)
         {
-            for (int y = worldPos.y; y < worldPos.y + chunkSize.y; y++)
+            for (int y = worldPosition.y; y < worldPosition.y + chunkSize.y; y++)
             {
-                for (int x = worldPos.x; x < worldPos.x + chunkSize.x; x++)
+                for (int x = worldPosition.x; x < worldPosition.x + chunkSize.x; x++)
                 {
-                    Vector3Int worldCoords = Vector3Int.RoundToInt(GetPointChunkCoord(x, y, z));
-                    //Vector3Int worldCoords = new Vector3Int(x, y, z);
-                    Vector3Int localCoords = new Vector3Int(x - worldPos.x, y - worldPos.y, z - worldPos.z);
+                    Vector3Int localCoords = new Vector3Int(x - worldPosition.x, y - worldPosition.y, z - worldPosition.z);
 
                     currentChunk.Points[localCoords.x, localCoords.y, localCoords.z] = Points[x, y, z];
-                    //currentChunk.Points[localCoords.x, localCoords.y, localCoords.z] = new Point(new Vector3Int(x,y,z), y > 1 ? 0.0f : 1.0f, Color.cyan);
                 }
             }
         }
@@ -184,7 +195,7 @@ public class MapGen : Singleton<MapGen>
 
         GizmoExtension.GizmosExtend.DrawBounds(worldBounds, Color.blue);
 
-        if (visualizeHeightMap)
+        if (visualizeHeightMap && heightMap != null)
         {
             for (int z = 0; z < mapSize.z; z++)
             {
@@ -195,7 +206,7 @@ public class MapGen : Singleton<MapGen>
             }
         }
 
-        if (visualizePoints)
+        if (visualizePoints && Points != null)
         {
             for (int z = 0; z < mapSize.z; z++)
             {
