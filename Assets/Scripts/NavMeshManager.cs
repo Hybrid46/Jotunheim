@@ -10,16 +10,18 @@ public class NavMeshManager : Singleton<NavMeshManager>
 
     public NavMeshSurface surfaceForCloning;
 
-    public void Start()
+    public void Awake()
     {
         MapGen.instance.OnChunksGenerated += Initialize;
     }
 
     public void Initialize()
     {
+        DateTime exectime = DateTime.Now;
         Debug.Log("NavMesh Initialization");
         InitializeNavMeshSurfaces();
         InitializeNavMeshes();
+        Debug.Log("NavMesh generated in: " + (DateTime.Now - exectime).Milliseconds + " ms");
     }
 
     private void InitializeNavMeshSurfaces()
@@ -35,7 +37,7 @@ public class NavMeshManager : Singleton<NavMeshManager>
 
     private void CopyNavMeshComponents(NavMeshSurface surfaceForCloning, NavMeshSurface navMeshSurface)
     {
-        throw new NotImplementedException();
+        //throw new NotImplementedException();
     }
 
     private void InitializeNavMeshes()

@@ -38,8 +38,8 @@ public class MapGen : Singleton<MapGen>
     private float noiseScale = 16.0f;
 
     //This is an offset for each poly to make some roughness on terrain surface
-    private static float iceRoughness = 0.025f;
-    private static float terrainRoughness = 0.1f;
+    private static float iceRoughness = 0.02f;
+    private static float terrainRoughness = 0.08f;
 
     void Start()
     {
@@ -54,6 +54,8 @@ public class MapGen : Singleton<MapGen>
         worldBounds = new Bounds(new Vector3(mapSize.x * 0.5f, mapSize.y * 0.5f, mapSize.z * 0.5f), mapSize);
 
         //Fill up height and density map
+        DateTime exectime = DateTime.Now;
+
         float xCoord;
         float zCoord;
         float density;
@@ -91,7 +93,11 @@ public class MapGen : Singleton<MapGen>
             }
         }
 
-        //chunk generation
+        Debug.Log("Height and density map generated in: " + (DateTime.Now - exectime).Milliseconds + " ms");
+
+        //Chunk Generation
+        exectime = DateTime.Now;
+
         //for (int z = 0; z < mapSize.z; z += chunkSnapVector.z)
         for (int z = 0; z < mapSize.z; z += chunkSnapVector.z)
         {
@@ -105,14 +111,14 @@ public class MapGen : Singleton<MapGen>
             }
         }
 
+        Debug.Log("Chunks generated in: " + (DateTime.Now - exectime).Milliseconds + " ms");
+
         OnChunksGenerated += ChunksGenerated;
         OnChunksGenerated.Invoke();
     }
 
     public Chunk CreateChunk(Vector3Int worldPosition)
     {
-        DateTime exectime = DateTime.Now;
-
         GameObject chunkObj = new GameObject();
         MeshFilter meshFilter = chunkObj.AddComponent<MeshFilter>();
         MeshRenderer meshRenderer = chunkObj.AddComponent<MeshRenderer>();
@@ -150,8 +156,6 @@ public class MapGen : Singleton<MapGen>
         meshCollider.sharedMesh = mesh;
 
         currentChunk.InitMesh();
-
-        Debug.Log("Chunk generated in: " + (DateTime.Now - exectime).Milliseconds + " ms");
 
         return currentChunk;
     }
