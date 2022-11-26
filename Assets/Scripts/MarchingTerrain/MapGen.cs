@@ -13,8 +13,9 @@ public class MapGen : Singleton<MapGen>
         Debug.Log("Chunks ready!");
     }
 
-    public static Vector3Int mapSize = new Vector3Int(253, 5, 253);
+    public static Vector3Int mapSize = new Vector3Int(256, 5, 256);
     public static Vector3Int chunkSize = new Vector3Int(16, 5, 16);
+    private const float chunkMeshResolution = 2.0f;
 
     public Material TerrainMat;
 
@@ -129,13 +130,13 @@ public class MapGen : Singleton<MapGen>
         currentChunk.chunkWorldPos = worldPosition;
 
         //Fill Chunk Points
-        for (int z = worldPosition.z - 1; z < worldPosition.z + chunkSize.z + 1; z++)
+        for (int z = worldPosition.z; z < worldPosition.z + chunkSize.z; z++)
         {
             for (int y = worldPosition.y; y < worldPosition.y + chunkSize.y; y++)
             {
-                for (int x = worldPosition.x - 1; x < worldPosition.x + chunkSize.x + 1; x++)
+                for (int x = worldPosition.x; x < worldPosition.x + chunkSize.x; x++)
                 {
-                    Vector3Int localCoords = new Vector3Int(x - worldPosition.x + 1, y - worldPosition.y, z - worldPosition.z + 1);
+                    Vector3Int localCoords = new Vector3Int(x - worldPosition.x, y - worldPosition.y, z - worldPosition.z);
 
                     if (x < 0 || z < 0 || x > mapSize.x || z > mapSize.z)
                     {
@@ -148,13 +149,9 @@ public class MapGen : Singleton<MapGen>
             }
         }
 
-        marchCubes = new MarchingCubes(currentChunk.Points, 0.5f);
-        Mesh mesh = marchCubes.CreateMeshData(currentChunk.Points);
-
         meshRenderer.material = TerrainMat;
-
-        meshFilter.sharedMesh = mesh;
-        meshCollider.sharedMesh = mesh;
+        meshFilter.sharedMesh = GenerateMesh(worldPosition);
+        meshCollider.sharedMesh = meshFilter.sharedMesh; //maybe this should be a terrain collider?
 
         currentChunk.InitMesh();
 
@@ -183,6 +180,71 @@ public class MapGen : Singleton<MapGen>
     }
 
     public static Vector3 GetPointChunkCoord(int x, int y, int z) => new Vector3 { x = x % chunkSize.x, y = y % chunkSize.y, z = z % chunkSize.z };
+
+    private Mesh GenerateMesh(Vector3 worldPosition)
+    {
+        Mesh mesh = new Mesh();
+
+        //Vertices and colors
+        Vector3[] vertices = new Vector3[(chunkSize.x + 1) * (chunkSize.z + 1)];
+        Color[] colors = new Color[(chunkSize.x + 1) * (chunkSize.z + 1)];
+
+        int i = 0;
+        for (int d = 0; d <= chunkSize.z; d++)
+        {
+            for (int w = 0; w <= chunkSize.x; w++)
+            {
+                int height = heightMap[(int)worldPosition.x + w, (int)worldPosition.z + d];
+                float yOffset = Points[(int)worldPosition.x + w, height, (int)worldPosition.z + d].density;
+                vertices[i] = new Vector3(worldPosition.x + w, height + (1 - yOffset), worldPosition.z + d);
+                colors[i] = new Color(0.3f, 0.3f, 0.3f);
+                i++;
+            }
+        }
+
+        //Triangles
+        int[] triangles = new int[chunkSize.x * chunkSize.z * 6];
+
+        for (int d = 0; d < chunkSize.z; d++)
+        {
+            for (int w = 0; w < chunkSize.x; w++)
+            {
+                int ti = (d * (chunkSize.x) + w) * 6;
+
+                triangles[ti] = (d * (chunkSize.x + 1)) + w;
+                triangles[ti + 1] = ((d + 1) * (chunkSize.x + 1)) + w;
+                triangles[ti + 2] = ((d + 1) * (chunkSize.x + 1)) + w + 1;
+
+                triangles[ti + 3] = (d * (chunkSize.x + 1)) + w;
+                triangles[ti + 4] = ((d + 1) * (chunkSize.x + 1)) + w + 1;
+                triangles[ti + 5] = (d * (chunkSize.x + 1)) + w + 1;
+            }
+        }
+
+        //UV
+        Vector2[] uv = new Vector2[(chunkSize.x + 1) * (chunkSize.z + 1)];
+
+        i = 0;
+        for (int d = 0; d <= chunkSize.z; d++)
+        {
+            for (int w = 0; w <= chunkSize.x; w++)
+            {
+                uv[i] = new Vector2(w / (float)chunkSize.x, d / (float)chunkSize.z);
+                i++;
+            }
+        }
+
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
+        mesh.colors = colors;
+        mesh.uv = uv;
+        mesh.RecalculateTangents();
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        mesh.Optimize();
+
+        return mesh;
+    }
 
     private void OnDrawGizmos()
     {
