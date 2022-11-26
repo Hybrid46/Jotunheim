@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class Chunk : MonoBehaviour
 {
-    public Point[,,] Points = new Point[MapGen.chunkSize.x, MapGen.chunkSize.y, MapGen.chunkSize.z];
+    public Point[,,] Points = new Point[MapGen.chunkSize.x + 2, MapGen.chunkSize.y, MapGen.chunkSize.z + 2];
     //public Dictionary<Vector3Int, Point> worldPoints = new Dictionary<Vector3Int, Point>();
 
     public Vector3Int chunkWorldPos;

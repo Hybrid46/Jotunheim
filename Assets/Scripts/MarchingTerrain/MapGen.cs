@@ -15,7 +15,6 @@ public class MapGen : Singleton<MapGen>
 
     public static Vector3Int mapSize = new Vector3Int(253, 5, 253);
     public static Vector3Int chunkSize = new Vector3Int(16, 5, 16);
-    private Vector3Int chunkSnapVector;
 
     public Material TerrainMat;
 
@@ -44,7 +43,6 @@ public class MapGen : Singleton<MapGen>
     void Start()
     {
         noiseOffset = new Vector2(Random.Range(0, 999999), Random.Range(0, 999999));
-        chunkSnapVector = new Vector3Int(chunkSize.x - 2, chunkSize.y - 2, chunkSize.z - 2);
 
         Points = new Point[mapSize.x, mapSize.y, mapSize.z];
         heightMap = new int[mapSize.x, mapSize.z];
@@ -98,14 +96,11 @@ public class MapGen : Singleton<MapGen>
         //Chunk Generation
         exectime = DateTime.Now;
 
-        //for (int z = 0; z < mapSize.z; z += chunkSnapVector.z)
-        for (int z = 0; z < mapSize.z; z += chunkSnapVector.z)
+        for (int z = 0; z < mapSize.z - chunkSize.z; z += chunkSize.z)
         {
-            //for (int x = 0; x < mapSize.x; x += chunkSnapVector.x)
-            for (int x = 0; x < mapSize.x; x += chunkSnapVector.x)
+            for (int x = 0; x < mapSize.x - chunkSize.x; x += chunkSize.x)
             {
-                //Vector3Int pos = Vector3Int.RoundToInt(Snapping.Snap(new Vector3Int(x, 0, z), chunkSnapVector, SnapAxis.All));
-                Vector3Int worldPosition = new Vector3Int(x - x / chunkSize.x, 0, z - z / chunkSize.z);
+                Vector3Int worldPosition = new Vector3Int(x, 0, z);
 
                 ChunkCells.Add(worldPosition, CreateChunk(worldPosition));
             }
@@ -134,14 +129,20 @@ public class MapGen : Singleton<MapGen>
         currentChunk.chunkWorldPos = worldPosition;
 
         //Fill Chunk Points
-        for (int z = worldPosition.z; z < worldPosition.z + chunkSize.z; z++)
+        for (int z = worldPosition.z - 1; z < worldPosition.z + chunkSize.z + 1; z++)
         {
             for (int y = worldPosition.y; y < worldPosition.y + chunkSize.y; y++)
             {
-                for (int x = worldPosition.x; x < worldPosition.x + chunkSize.x; x++)
+                for (int x = worldPosition.x - 1; x < worldPosition.x + chunkSize.x + 1; x++)
                 {
-                    Vector3Int localCoords = new Vector3Int(x - worldPosition.x, y - worldPosition.y, z - worldPosition.z);
+                    Vector3Int localCoords = new Vector3Int(x - worldPosition.x + 1, y - worldPosition.y, z - worldPosition.z + 1);
 
+                    if (x < 0 || z < 0 || x > mapSize.x || z > mapSize.z)
+                    {
+                        continue;
+                    }
+
+                    //Debug.Log("Point world coords: x " + x + " y " + y + " z " + z + " local" + localCoords);
                     currentChunk.Points[localCoords.x, localCoords.y, localCoords.z] = Points[x, y, z];
                 }
             }
