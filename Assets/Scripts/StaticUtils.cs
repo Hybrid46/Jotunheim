@@ -1,3 +1,5 @@
+using System;
+using System.Reflection;
 using UnityEngine;
 
 public static class StaticUtils
@@ -36,6 +38,39 @@ public static class StaticUtils
         y = Mathf.FloorToInt(y / v) * v;
         z = Mathf.FloorToInt(z / v) * v;
         return new Vector3(x, y, z);
+    }
+
+    public static T GetCopyOf<T>(this Component comp, T other) where T : Component
+    {
+        Type type = comp.GetType();
+        if (type != other.GetType()) return null;
+
+        //maybe static should be skipped!
+        BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Default;
+        PropertyInfo[] pinfos = type.GetProperties(flags);
+
+        foreach (var pinfo in pinfos)
+        {
+            if (pinfo.CanWrite)
+            {
+                try
+                {
+                    pinfo.SetValue(comp, pinfo.GetValue(other, null), null);
+                }
+                catch
+                {
+                    //It doesn't matter if we can't write here! This means the field not exist here.
+                }
+            }
+        }
+
+        FieldInfo[] finfos = type.GetFields(flags);
+
+        foreach (var finfo in finfos)
+        {
+            finfo.SetValue(comp, finfo.GetValue(other));
+        }
+        return comp as T;
     }
 
 }
