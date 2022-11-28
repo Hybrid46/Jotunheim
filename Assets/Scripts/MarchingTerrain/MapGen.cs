@@ -179,7 +179,7 @@ public class MapGen : Singleton<MapGen>
         return PerlinValue * heightMultiplier;
     }
 
-    public static Vector3 GetPointChunkCoord(int x, int y, int z) => new Vector3 { x = x % chunkSize.x, y = y % chunkSize.y, z = z % chunkSize.z };
+    public static Vector3 GetChunkLocalCoord(float x, float y, float z) => new Vector3(x % chunkSize.x, y, z % chunkSize.z);
 
     private Mesh GenerateMesh(Vector3 worldPosition)
     {

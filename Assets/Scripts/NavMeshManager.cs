@@ -1,50 +1,39 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Unity.AI.Navigation;
 using Unity.VisualScripting;
+//using UnityEditor;
 using UnityEngine;
 
 public class NavMeshManager : Singleton<NavMeshManager>
 {
     public Dictionary<Chunk, NavMeshSurface> navMeshSurfaces;
 
+    public bool generateNavMeshSurfaces = true;
     public NavMeshSurface surfaceForCloning;
 
-    public void Awake()
+    public override void Awake()
     {
-        MapGen.instance.OnChunksGenerated += Initialize;
+        if (generateNavMeshSurfaces) MapGen.instance.OnChunksGenerated += Init;
     }
 
-    public void Initialize()
+    public void Init()
     {
         DateTime exectime = DateTime.Now;
         Debug.Log("NavMesh Initialization");
-        InitializeNavMeshSurfaces();
-        InitializeNavMeshes();
-        Debug.Log("NavMesh generated in: " + (DateTime.Now - exectime).Milliseconds + " ms");
-    }
 
-    private void InitializeNavMeshSurfaces()
-    {
         navMeshSurfaces = new Dictionary<Chunk, NavMeshSurface>(MapGen.instance.ChunkCells.Count);
 
         foreach (KeyValuePair<Vector3Int, Chunk> chunk in MapGen.instance.ChunkCells)
         {
             navMeshSurfaces.Add(chunk.Value, chunk.Value.AddComponent<NavMeshSurface>());
-            CopyNavMeshComponents(surfaceForCloning, navMeshSurfaces[chunk.Value]);
+            //EditorUtility.CopySerializedManagedFieldsOnly(surfaceForCloning, navMeshSurfaces[chunk.Value]);
+            navMeshSurfaces[chunk.Value].BuildNavMesh();
         }
+
+        Debug.Log("NavMesh generated in: " + (DateTime.Now - exectime).Milliseconds + " ms");
     }
 
-    private void CopyNavMeshComponents(NavMeshSurface surfaceForCloning, NavMeshSurface navMeshSurface)
-    {
-        //throw new NotImplementedException();
-    }
-
-    private void InitializeNavMeshes()
-    {
-        foreach (KeyValuePair<Chunk, NavMeshSurface> navMeshSurface in navMeshSurfaces)
-        {
-            navMeshSurface.Value.BuildNavMesh();
-        }
-    }
+    public NavMeshSurface GetNavMeshSurfaceOfChunk(Chunk chunk) => navMeshSurfaces[chunk];
 }
