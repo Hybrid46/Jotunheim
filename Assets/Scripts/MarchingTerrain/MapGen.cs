@@ -13,7 +13,7 @@ public class MapGen : Singleton<MapGen>
         Debug.Log("Chunks ready!");
     }
 
-    public static Vector3Int mapSize = new Vector3Int(256, 5, 256);
+    public static Vector3Int mapSize = new Vector3Int(257, 5, 257);
     public static Vector3Int chunkSize = new Vector3Int(16, 5, 16);
     private const float chunkMeshResolution = 2.0f;
 
@@ -33,7 +33,7 @@ public class MapGen : Singleton<MapGen>
     public int pointLayer = 0;
     public bool visualizePoints = false;
 
-    private Bounds worldBounds;
+    private Bounds worldBounds = new Bounds();
     private Vector2 noiseOffset;
     private float noiseScale = 16.0f;
 
@@ -49,8 +49,6 @@ public class MapGen : Singleton<MapGen>
         heightMap = new int[mapSize.x, mapSize.z];
 
         Application.targetFrameRate = 60;
-
-        worldBounds = new Bounds(new Vector3(mapSize.x * 0.5f, mapSize.y * 0.5f, mapSize.z * 0.5f), mapSize);
 
         //Fill up height and density map
         DateTime exectime = DateTime.Now;
@@ -97,9 +95,9 @@ public class MapGen : Singleton<MapGen>
         //Chunk Generation
         exectime = DateTime.Now;
 
-        for (int z = 0; z < mapSize.z - chunkSize.z; z += chunkSize.z)
+        for (int z = 0; z < mapSize.z - 1; z += chunkSize.z)
         {
-            for (int x = 0; x < mapSize.x - chunkSize.x; x += chunkSize.x)
+            for (int x = 0; x < mapSize.x - 1; x += chunkSize.x)
             {
                 Vector3Int worldPosition = new Vector3Int(x, 0, z);
 
@@ -153,7 +151,8 @@ public class MapGen : Singleton<MapGen>
         meshFilter.sharedMesh = GenerateMesh(worldPosition);
         meshCollider.sharedMesh = meshFilter.sharedMesh; //maybe this should be a terrain collider?
 
-        currentChunk.InitMesh();
+        currentChunk.Init();
+        worldBounds.Encapsulate(currentChunk.myRenderer.bounds);
 
         return currentChunk;
     }
@@ -252,11 +251,11 @@ public class MapGen : Singleton<MapGen>
         {
             if (chunk.Value.isActiveAndEnabled)
             {
-                GizmoExtension.GizmosExtend.DrawBox(chunk.Value.chunkWorldPos, chunkSize, Quaternion.identity, Color.green);
+                GizmoExtension.GizmosExtend.DrawBounds(chunk.Value.myRenderer.bounds, Color.green);
             }
             else
             {
-                GizmoExtension.GizmosExtend.DrawBox(chunk.Value.chunkWorldPos, chunkSize, Quaternion.identity, Color.red);
+                GizmoExtension.GizmosExtend.DrawBounds(chunk.Value.myRenderer.bounds, Color.red);
             }
         }
 

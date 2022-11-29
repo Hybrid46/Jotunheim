@@ -13,14 +13,16 @@ public class Chunk : MonoBehaviour
     private MeshFilter myMeshFilter;
     private Mesh myMesh;
     private MeshCollider myMeshCollider;
+    public MeshRenderer myRenderer;
     //private float distanceToPlayer;
 
-    public void InitMesh()
+    public void Init()
     {
         myTransform = transform;
         myMeshFilter = GetComponent<MeshFilter>();
         myMesh = myMeshFilter.sharedMesh;
         myMeshCollider = GetComponent<MeshCollider>();
+        myRenderer = GetComponent<MeshRenderer>();
 
         /*
         for (int z = 0; z < MapGen.chunkSize.z; z++)
